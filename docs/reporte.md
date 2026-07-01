@@ -209,14 +209,15 @@ Agregar una categoría nueva de infracción (por ejemplo, una campaña estaciona
 
 ## 7. Limitaciones y camino al 95/95
 
-Lo que falta y próximos pasos:
+Lo que falta, próximos pasos y cómo quedaría el end-game:
 
 1. **Aplicar el verificador (etapa 4).** Ya está implementado pero no aplicado (`scripts/verify_stage.py`). Es la palanca de precisión más barata: poda los falsos positivos del VLM con un segundo paso estricto, sin tocar el recall de la etapa 3. Primera mejora a medir.
 2. **Few-shot con casos borde del golden.** Meter en el prompt los negativos difíciles (tapas de libro, sponsors, banners físicos de concesionario, estampados de prenda con texto de campaña) como ejemplos resueltos, en lugar de reglas declarativas que vimos que degradan la métrica global.
 3. **Fine-tuning.** Si lo anterior no basta, ajustar el VLM con el golden más las etiquetas débiles del dataset. Es la palanca más potente pero la más costosa.
 4. **Sembrar el golden con infracciones visuales** para cerrar el punto ciego del recall (sección 1.4) y medir contra casos que el dataset original no contiene.
+5. **Hash de imagenes** Un último apartado en producción sería hashear las imagenes, de tal forma identificamos imagenes que ya hemos procesado antes y no las pasaríamos de nuevo por todo el flujo, gastando recursos innecesariamente.
 
-Este tipo de problemas depende mucho de las iteraciones, es necesario probar, medir y ajustar. De esta forma se podría llegar al nivel de precisión esperado.
+Este tipo de problemas depende mucho de las iteraciones, es necesario probar, medir y ajustar. De esta forma se podría llegar al nivel de precisión esperado, el flujo planteado en la POC junto con los puntos anteriores serían el end-game productivo más viable.
 
 ---
 
