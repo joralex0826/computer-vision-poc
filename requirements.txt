@@ -1,0 +1,20 @@
+# Inferencia local (Apple Silicon / MLX). Todo on-prem: sin APIs externas de OCR.
+mlx==0.31.2
+mlx-vlm==0.6.3            # VLM (Qwen2.5-VL)
+mlx-lm==0.31.3           # LLM de texto del router (Qwen2.5-1.5B)
+rapidocr-onnxruntime==1.4.4  # OCR local (sin terceros)
+
+# Datos y utilidades
+pandas==3.0.3
+pyarrow==24.0.0
+numpy==2.4.6
+pillow==12.2.0
+requests==2.34.2
+
+# Notebooks / reportes
+ipywidgets==8.1.8
+openpyxl==3.1.5
+nbformat==5.10.4
+
+# Desarrollo
+pytest>=8.0
