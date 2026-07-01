@@ -113,7 +113,7 @@ Este porcentaje de producción es una **estimación de diseño** a partir de la 
 
 ### 3.4 Interpretabilidad
 
-El campo `evidence` lo produce la **misma etapa que toma la decisión**, no una explicación post-hoc. Si decide el OCR, la evidencia es "no se detectó texto". Si decide el router, es "el texto no contiene lenguaje de promoción/envío/sello" más el texto leído. Si decide el VLM, es el elemento concreto que vio ("franja '50% OFF' sobrepuesta en la esquina superior"). Quien pregunta por qué se rechazó una publicación recibe el motivo real de la etapa que la rechazó, no una racionalización.
+El campo `evidence` lo produce la **misma etapa que toma la decisión**, no una explicación posterior. Si decide el OCR, la evidencia es "no se detectó texto". Si decide el router, es "el texto no contiene lenguaje de promoción/envío/sello" más el texto leído. Si decide el VLM, es el elemento concreto que vio ("franja '50% OFF' sobrepuesta en la esquina superior"). Quien pregunta por qué se rechazó una publicación recibe el motivo real de la etapa que la rechazó, no una racionalización.
 
 ---
 
@@ -136,20 +136,20 @@ El pipeline **mejora la precisión en 11 puntos sacrificando solo 2 de recall**,
 
 ### 4.3 Entendimiento de los resultados
 
-No llegamos al 95/95. El cuello está en la precisión, y la causa es conocida: incluso el VLM de 7B todavía confunde algunos textos físicos con overlays, que es el caso intrínsecamente difícil (un sello promocional pegado en edición frente a un texto impreso en el producto o un cartel real de la escena). Las palancas para cerrar la brecha (verificador, few-shot con casos borde, fine-tuning) están en la sección.
+No llegamos al 95/95. El cuello está en la precisión, y la causa es que incluso el VLM de 7B todavía confunde algunos textos físicos con overlays, que es el caso por defecto más difícil (un sello promocional pegado en edición frente a un texto impreso en el producto o un cartel real de la escena). Las palancas para cerrar la brecha (verificador, few-shot con casos borde, fine-tuning) están en la sección.
 
 Conviene recordar el caveat de la sección 1.4: el golden hereda parte del sesgo de selección del dataset (pocas infracciones puramente visuales), así que el recall medido es optimista respecto a esas infracciones que el dataset no contiene. Es una limitación del material disponible, no del diseño, y se mitiga sembrando el golden con casos visuales en la siguiente iteración.
 
 ### 4.4 Por qué la precisión en producción sería mayor que ese 0.64
 
-El 0.64 toca analizarlo con cuidado, porque el golden no es tráfico normal: este set se armó a propósito como un examen difícil, lleno de casos de frontera y sobre todo de imágenes limpias que *parecen* infracción (texto legítimo que se confunde con promoción). Es un stress test. Así que el 0.64 es casi el peor caso: es la precisión entre las decisiones más difíciles, no la del día a día.
+El 0.64 toca analizarlo con cuidado, porque el golden no es tráfico normal: este set se armó a propósito como un examen difícil, lleno de casos de frontera y sobre todo de imágenes limpias que *parecen* infracción (texto legítimo que se confunde con promoción). Es un stress test. Así que el 0.64 es casi el peor caso con la precisión entre las decisiones más difíciles, no la del mundo real.
 
 Para ver por qué en producción sería mejor, sirve un ejemplo concreto. En el mundo real solo el 5.6% de las imágenes son infracciones. Tomemos **1000 imágenes**: 56 infractoras y 944 limpias. Supongamos que el sistema atrapa el 95% de las infractoras (53 de 56). Lo que cambia todo es cuántas *limpias* marca mal por error. Dos escenarios:
 
 - **Si marca mal el 26% de las limpias** (que es lo que pasa en el golden, por estar cargado de casos difíciles): son 245 falsas alarmas. De todo lo que bloquea (53 buenas + 245 malas), solo el 53/298 = **18%** era de verdad infracción.
 - **Si marca mal solo el 1% de las limpias** (lo esperable en producción): son 9 falsas alarmas. De lo que bloquea (53 + 9), el 53/62 = **85%** era infracción de verdad.
 
-Tenemos el mismo sistema, lo único que cambió fue el porcentaje de limpias marcadas mal, y la precisión saltó de 0.18 a 0.85. Este resultado es esperado en producción, sin embargo es importante hacer seguimiento y confirmarlo.
+Tenemos el mismo sistema, lo único que cambió fue el porcentaje de limpias marcadas mal, y la precisión saltó de 0.18 a 0.85. Este resultado es esperado en producción, sin embargo es importante hacer seguimiento y confirmarlo. Ilustro el ejemplo anterior para clarificar un poco el por qué aunque no alcanzamos la precision de 95% en la POC, el resultado puede ser mucho más optimista en producción.
 
 ---
 
@@ -161,7 +161,7 @@ Cubierto por diseño en dos frentes. Primero, **no hay dependencias de terceros 
 
 ### 5.2 Latencia
 
-Hay que separar dos hardwares. En el equipo de desarrollo (Apple M3, 16 GB) una llamada al VLM toma del orden de 20-36 segundos: sirve para evaluar offline, no cumpliría el p99 en producción. Pero el reto especifica GPU de 16-24 GB, y ahí el VLM en 4 bits responde en **uno a dos segundos** (el 3B más cerca de 1 s, el 7B algo más), dentro del techo de 5000 ms. Las etapas baratas (OCR + router), que resuelven la mayor parte del tráfico, tienen p99 del orden de 1.2 s incluso en el equipo de desarrollo. El p99 agregado en la infraestructura objetivo queda bajo el límite. El pipeline mide y reporta latencias por etapa (`latency_ms`, `stage_ms` en la salida), así que esto es verificable.
+Hay que separar dos hardwares (con el que se desarrolló el reto vs el de prod especificado). En el equipo de desarrollo (Apple M3, 16 GB) una llamada al VLM toma del orden de 20-36 segundos: sirve para evaluar offline, no cumpliría el p99 en producción. Pero el reto especifica GPU de 16-24 GB, y ahí el VLM en 4 bits responde en **uno a dos segundos** (el 3B más cerca de 1 s, el 7B algo más), dentro del techo de 5000 ms. Las etapas baratas (OCR + router), que resuelven la mayor parte del tráfico, tienen p99 del orden de 1.2 s incluso en el equipo de desarrollo. El p99 agregado en la infraestructura objetivo queda bajo el límite. El pipeline mide y reporta latencias por etapa (`latency_ms`, `stage_ms` en la salida), así que esto es verificable.
 
 ### 5.3 Interpretabilidad
 
@@ -169,9 +169,9 @@ Resuelta por diseño, como se explicó en 3.4: la evidencia la genera la etapa q
 
 ### 5.4 Infraestructura
 
-El reto da dos escenarios de hardware —GPU de 16 o 24 GB de memoria de video (VRAM), o CPU de 4 núcleos con 2-32 GB de RAM— y pide que el servicio corra con varios workers. El diseño encaja en ambos, y aquí está el detalle de por qué.
+El reto da dos escenarios de hardware —GPU de 16 o 24 GB de memoria de video (VRAM), o CPU de 4 núcleos con 2-32 GB de RAM— y pide que el servicio corra con varios workers. El diseño encaja en ambos, y aquí está el por qué.
 
-**Qué corre y cuánta memoria pide.** Cada parámetro de un modelo ocupa normalmente 2 bytes; nosotros usamos los modelos *cuantizados a 4 bits*, que es guardar cada parámetro con menos precisión (~0.5 byte) para reducir el tamaño unas cuatro veces casi sin perder calidad. Con eso, el presupuesto de memoria queda así:
+**Qué corre y cuánta memoria pide.** Se usaron los modelos *cuantizados a 4 bits*, que es guardar cada parámetro con menos precisión (~0.5 byte) para reducir el tamaño unas cuatro veces casi sin perder calidad. Con eso, el presupuesto de memoria queda así:
 
 | Componente | Sin cuantizar | Cuantizado a 4 bits (lo que usamos) | Dónde corre |
 |---|---|---|---|
@@ -180,7 +180,7 @@ El reto da dos escenarios de hardware —GPU de 16 o 24 GB de memoria de video (
 | Router (LLM 1.5B) | ~3 GB | ~1 GB | GPU |
 | OCR (RapidOCR) | — | ligero | CPU |
 
-Sumando el VLM 7B, el router y el espacio de trabajo para procesar la imagen, hablamos de unos 7-9 GB: **cabe holgado en la GPU de 16 GB y con margen amplio en la de 24 GB**. El 3B deja aún más espacio libre. La elección de modelos pequeños y cuantizados se hace justamente para respetar el límite de VRAM del reto sin sacrificar demasiada calidad.
+Sumando el VLM 7B, el router y el espacio de trabajo para procesar la imagen, hablamos de unos 7-9 GB: **cabe bien en la GPU de 16 GB y con margen amplio en la de 24 GB**. El 3B deja aún más espacio libre. La elección de modelos pequeños y cuantizados se hace justamente para respetar el límite de VRAM del reto sin sacrificar demasiada calidad.
 
 ---
 
@@ -199,6 +199,8 @@ Las señales que se vigilarían en producción, y que disparan alerta:
 
 El ciclo de mejora se alimenta de producción: los casos apelados (falsos positivos confirmados) y los falsos negativos que escapan se capturan, se etiquetan con la misma guía y se incorporan al golden set. Con ese golden creciente se reevalúa cada cambio de prompt o de modelo antes de desplegarlo. Es un loop cerrado donde produccion genera casos dificiles, el golden los absorbe, y el siguiente modelo se mide contra ellos.
 
+Esto como trabajo reactivo en cierta medida, sin embargo, en función de las métricas que usamos (f1, precision, recall) podríamos tener alertas si estás también se ven afectadas, esto va ligado directamente al punto anterior, ya que dependerá de nuestro golden set, el cual debería ser actualizado de forma periodica para evitar un model drift.
+
 ### 6.3 Extensibilidad
 
 Agregar una categoría nueva de infracción (por ejemplo, una campaña estacional, fecha especial o evento) no cambia la arquitectura: se amplía la taxonomía en el prompt del VLM y las palabras clave del router. El pipeline, las etapas y la infraestructura quedan iguales. Todos los cambios son transparentes al proceso y no es necesario modificar código.
@@ -209,9 +211,9 @@ Agregar una categoría nueva de infracción (por ejemplo, una campaña estaciona
 
 Lo que falta y próximos pasos:
 
-1. **Aplicar el verificador (etapa 4).** Ya está implementado (`scripts/verify_stage.py`). Es la palanca de precisión más barata: poda los falsos positivos del VLM con un segundo paso estricto, sin tocar el recall de la etapa 3. Primera mejora a medir.
+1. **Aplicar el verificador (etapa 4).** Ya está implementado pero no aplicado (`scripts/verify_stage.py`). Es la palanca de precisión más barata: poda los falsos positivos del VLM con un segundo paso estricto, sin tocar el recall de la etapa 3. Primera mejora a medir.
 2. **Few-shot con casos borde del golden.** Meter en el prompt los negativos difíciles (tapas de libro, sponsors, banners físicos de concesionario, estampados de prenda con texto de campaña) como ejemplos resueltos, en lugar de reglas declarativas que vimos que degradan la métrica global.
-3. **Fine-tuning / destilación.** Si lo anterior no basta, ajustar el VLM con el golden más las etiquetas débiles del dataset. Es la palanca más potente pero la más costosa.
+3. **Fine-tuning.** Si lo anterior no basta, ajustar el VLM con el golden más las etiquetas débiles del dataset. Es la palanca más potente pero la más costosa.
 4. **Sembrar el golden con infracciones visuales** para cerrar el punto ciego del recall (sección 1.4) y medir contra casos que el dataset original no contiene.
 
 Este tipo de problemas depende mucho de las iteraciones, es necesario probar, medir y ajustar. De esta forma se podría llegar al nivel de precisión esperado.
@@ -241,8 +243,8 @@ Resumen objetivos:
 
 Este trabajo se hizo con asistencia de un agente de IA (Claude, en Claude Code).
 
-El agente se usó como **par de trabajo**. En concreto: para escribir el esqueleto del código (las clases del pipeline, los scripts de evaluación, los tests) que luego se revisó y corrigió; y para iterar los prompts del VLM, que fue un proceso de prueba y error guiado por los resultados de cada corrida.
+El agente se usó como **par de trabajo**. En concreto: para escribir el esqueleto del código (las clases del pipeline, los scripts de evaluación, los tests) que luego se revisó y corrigió; y para iterar los prompts del VLM, que fue un proceso de prueba y error guiado por los resultados de cada corrida, finalmente como redactor secundario para mas claridad en las ideas y explicaciones.
 
 Se indaga junto con el apoyo de la IA sobre posibles enfoques para solucionar el problema de vision, modelos, sus limitaciones, ventajas y desventajas.
 
-En resumen, la IA aportó velocidad (código) y conocimiento teorico (modelos y herramientas para este tipo de problemas). Conclusiones, análisis de resultados, iteraciones, estructura, próximos pasos, entre otros corrieron por parte mía.
+En resumen, la IA aportó velocidad (código) y conocimiento teorico (modelos y herramientas para este tipo de problemas). Conclusiones, análisis de resultados, iteraciones, estructura, próximos pasos, entre otros no corrieron por parte de agentes o modelos IA.
