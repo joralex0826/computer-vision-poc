@@ -10,7 +10,6 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))
 from moderation import MODEL, Moderator  # noqa: E402
 
-# Permite probar otro modelo sin tocar codigo:
 #   VLM_MODEL=mlx-community/Qwen2.5-VL-7B-Instruct-4bit python scripts/eval_engine.py all 150
 ENGINE_MODEL = os.environ.get("VLM_MODEL", MODEL)
 
