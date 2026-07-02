@@ -7,8 +7,8 @@ from .utils import parse_output
 class Moderator:
     """Motor de moderacion basado en VLM local.
 
-    moderate(image_path) -> {has_infraction: bool, evidence, reason, confidence}.
-    El prompt es configurable para reutilizar el mismo motor como verificador.
+    El prompt es intercambiable: el mismo motor sirve como verificador
+    con criterio mas estricto (segunda pasada orientada a precision).
     """
 
     def __init__(self, model=MODEL, max_tokens=VLM_MAX_TOKENS, prompt=None, max_side=VLM_MAX_SIDE):
@@ -21,6 +21,11 @@ class Moderator:
         self.max_side = max_side
 
     def _infer(self, image_path):
+        """Llama al VLM y devuelve el dict parseado de su respuesta JSON.
+
+        Redimensiona la imagen si supera max_side para evitar timeouts de GPU.
+        El archivo temporal se elimina siempre, aunque falle la inferencia.
+        """
         import os
         import tempfile
         from mlx_vlm import generate
@@ -29,7 +34,7 @@ class Moderator:
 
         img = Image.open(image_path).convert("RGB")
         path, tmp = str(image_path), None
-        if max(img.size) > self.max_side:  # redimensiona para evitar timeouts de GPU
+        if max(img.size) > self.max_side:
             img.thumbnail((self.max_side, self.max_side))
             fd, tmp = tempfile.mkstemp(suffix=".jpg")
             os.close(fd)
@@ -47,6 +52,7 @@ class Moderator:
                 os.remove(tmp)
 
     def moderate(self, image_path):
+        """Devuelve el veredicto final: has_infraction, evidence, reason y confidence."""
         r = self._infer(image_path)
         return {"has_infraction": bool(r.get("has_infraction")),
                 "evidence": str(r.get("evidence")),

@@ -18,8 +18,8 @@ def wilson_ci(k, n, z=1.96):
 
 
 def precision_at_prevalence(recall, specificity, prevalence=REAL_PREVALENCE):
-    """Precision esperada a una prevalencia dada (recall y especificidad no
-    dependen de la prevalencia; la precision si)."""
+    """Precision esperada a una prevalencia dada
+    """
     tpr, fpr = recall, 1 - specificity
     den = prevalence * tpr + (1 - prevalence) * fpr
     return round(prevalence * tpr / den, 4) if den else float("nan")

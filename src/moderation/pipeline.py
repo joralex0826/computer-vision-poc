@@ -16,6 +16,8 @@ from .vlm import Moderator
 
 
 class ModerationPipeline:
+    """Cascada OCR -> router -> VLM. Cada etapa barata filtra antes de llegar al modelo caro."""
+
     def __init__(self, vlm_model=MODEL):
         self.ocr = OCRStage()
         self.router = RouterStage()
@@ -23,6 +25,9 @@ class ModerationPipeline:
         CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
     def _resolve_image(self, picture_url, image_path):
+        """Devuelve el path local de la imagen, descargandola si hace falta.
+        Usa rename atomico para evitar corrupcion si dos workers coinciden.
+        """
         if image_path is not None:
             return Path(image_path)
         import requests
@@ -43,6 +48,9 @@ class ModerationPipeline:
         return dest
 
     def moderate(self, picture_url=None, image_path=None):
+        """Corre la cascada y devuelve el veredicto con has_infraction, evidence,
+        reason, stage y latency_ms. Acepta URL o path local.
+        """
         t = {}
         s = time.perf_counter()
         path = self._resolve_image(picture_url, image_path)
@@ -52,6 +60,7 @@ class ModerationPipeline:
         text = self.ocr(path)
         t["ocr_ms"] = (time.perf_counter() - s) * 1000
 
+        # Sin texto no puede haber overlay promocional: corte rapido.
         if not text.strip():
             return {"has_infraction": False,
                     "evidence": "El OCR local no detecto texto en la imagen, por lo que no hay overlay promocional, de entrega ni sello sobrepuesto.",
@@ -62,12 +71,14 @@ class ModerationPipeline:
         suspicious = self.router.is_suspicious(text)
         t["router_ms"] = (time.perf_counter() - s) * 1000
 
+        # Texto neutro confirmado por el router: no merece revision visual.
         if not suspicious:
             return {"has_infraction": False,
                     "evidence": f'El texto detectado no contiene lenguaje de promocion, envio/entrega ni sellos de plataforma. Texto OCR: "{text[:160]}"',
                     "reason": "none", "stage": "router", "ocr_text": text,
                     "latency_ms": round(sum(t.values()), 1), "stage_ms": t}
 
+        # Solo llega aqui lo que el router considera sospechoso: el VLM decide.
         s = time.perf_counter()
         result = self.vlm.moderate(path)
         t["vlm_ms"] = (time.perf_counter() - s) * 1000

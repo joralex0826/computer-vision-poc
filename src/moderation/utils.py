@@ -4,7 +4,9 @@ import re
 
 
 def parse_output(text):
-    """Extrae el primer objeto JSON de la respuesta del modelo. None si falla."""
+    """Saca el primer JSON valido de la respuesta del modelo.
+    Retorna None si no encuentra nada parseable.
+    """
     m = re.search(r"\{.*\}", text, re.DOTALL)
     if not m:
         return None
@@ -15,15 +17,14 @@ def parse_output(text):
 
 
 def norm(text):
-    """Normaliza espacios/saltos de linea a minusculas para el match de keywords."""
+    """Minusculas y espacios colapsados, para comparar keywords de forma robusta."""
     return re.sub(r"\s+", " ", str(text).lower()).strip()
 
 
 def clean_ocr(text):
-    """Limpia el texto del OCR antes de pasarlo al router/LLM.
+    """Colapsa saltos de linea y espacios repetidos a un solo espacio.
 
-    Colapsa saltos de linea, tabs y espacios repetidos a un solo espacio (evita
-    ruido y tokens desperdiciados) y conserva mayusculas y acentos, que son senal
-    util para el LLM. El match de keywords se hace aparte con norm().
+    Conserva mayusculas y acentos porque son senal util para el LLM.
+    El match de keywords usa norm() por separado.
     """
     return re.sub(r"\s+", " ", str(text)).strip()

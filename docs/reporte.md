@@ -240,7 +240,38 @@ Resumen objetivos:
 | Entregable escrito + diagramas + sección de agentes de IA | Este documento (secciones 3 y 8) | Hecho |
 | Código en GitHub (notebooks o scripts) | `src/` + `scripts/` + `notebooks/` + `tests/` | Hecho |
 
-## 9. Uso de agentes de IA en el desarrollo
+## 9. Tests y cobertura
+
+El módulo `src/moderation/` tiene 19 tests unitarios en `tests/`, todos sobre funciones puras o con las dependencias de modelo mockeadas (sin necesidad de GPU).
+
+| Archivo | Qué prueba |
+|---|---|
+| `test_utils.py` | Parseo de JSON del VLM, normalización de texto OCR |
+| `test_evaluation.py` | Matriz de confusión, IC de Wilson, ajuste por prevalencia real |
+| `test_ocr.py` | Unión y limpieza de bloques OCR, imagen sin texto |
+| `test_router.py` | Corte por keyword sin llamar al LLM, respuestas REVISAR/LIMPIO del LLM |
+| `test_pipeline.py` | Cache de imágenes, cortes de la cascada en OCR/router/VLM, latencias en salida |
+
+Cobertura medida con `pytest --cov` (Python 3.11, sin GPU):
+
+```
+src/moderation/__init__.py    100%
+src/moderation/config.py      100%
+src/moderation/prompts.py     100%
+src/moderation/ocr.py         100%
+src/moderation/router.py      100%
+src/moderation/evaluation.py   96%   (wilson_ci con n=0)
+src/moderation/pipeline.py     91%   (rama except del download)
+src/moderation/utils.py        86%   (clean_ocr cubierta indirectamente)
+src/moderation/vlm.py          19%   (requiere GPU y modelo real)
+TOTAL                           79%
+```
+
+El 19% de `vlm.py` es normal sin hardware, la inferencia del VLM no es testeable unitariamente sin el modelo cargado. El resto del módulo supera el 86%.
+
+---
+
+## 10. Uso de agentes de IA en el desarrollo
 
 Este trabajo se hizo con asistencia de un agente de IA (Claude, en Claude Code).
 

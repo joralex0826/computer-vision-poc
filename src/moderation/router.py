@@ -10,11 +10,21 @@ from .utils import clean_ocr, norm
 
 
 class RouterStage:
+    """Filtro de texto barato que decide si vale la pena llamar al VLM.
+
+    Dos capas en paralelo: keywords exactos (rapido) + LLM 1.5B (parafrasis).
+    """
+
     def __init__(self, model=ROUTER_MODEL):
         from mlx_lm import load
         self.model, self.tok = load(model)
 
     def is_suspicious(self, text):
+        """Retorna True si el texto suena a promo, delivery o badge de plataforma.
+
+        Primero revisa keywords si no hay match, consulta
+        el LLM. Asi se evita la latencia del modelo en los casos mas obvios.
+        """
         n = norm(text)
         if any(k in n for k in ROUTER_KEYWORDS):
             return True
