@@ -1,7 +1,6 @@
 """Etapa de ruteo: decide si el texto OCR amerita revision visual (VLM).
 
-Alto recall por diseno: REVISAR si el LLM de texto lo marca O si hay match de
-palabras conocidas. El LLM cubre parafrasis/multilingue; los keywords cubren
+El LLM cubre parafrasis/multilingue; los keywords cubren
 terminos fijos que el modelo chico podria pasar por alto.
 """
 from .config import ROUTER_MODEL
