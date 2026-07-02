@@ -27,9 +27,19 @@ class ModerationPipeline:
             return Path(image_path)
         import requests
         dest = CACHE_DIR / (hashlib.md5(picture_url.encode()).hexdigest() + ".jpg")
-        if not (dest.exists() and dest.stat().st_size > 0):
+        if dest.exists() and dest.stat().st_size > 0:
+            return dest
+        tmp = dest.with_suffix(".tmp")
+        try:
             r = requests.get(picture_url, timeout=10, headers={"User-Agent": "Mozilla/5.0"})
-            dest.write_bytes(r.content)
+            r.raise_for_status()
+            tmp.write_bytes(r.content)
+            if tmp.stat().st_size == 0:
+                raise ValueError(f"Imagen vacia descargada desde {picture_url}")
+            tmp.replace(dest)
+        except Exception:
+            tmp.unlink(missing_ok=True)
+            raise
         return dest
 
     def moderate(self, picture_url=None, image_path=None):
